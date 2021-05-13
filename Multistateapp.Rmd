@@ -1,0 +1,180 @@
+---
+title: "TommyIvanics"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+**Multistate modelling:** 
+
+```{r}
+library(survival)
+library(tidyverse)
+library(readr)
+library(dplyr)
+library(ggplot2)
+library(tidyr)
+library(lubridate)
+library(survminer)
+library(msm)
+library(haven)
+library(ggsci)
+library(plotly)
+options(scipen=999)
+options(max.print=20000)
+```
+
+```{r}
+HCC.msm <- readRDS(file = "HCC.msm.rds")
+HCC.preop <- readRDS(file = "HCC.preop.rds")
+HCC.postop <- readRDS(file = "HCC.postop.rds")
+```
+
+
+**Multistate model object under a time-homogeneous Markov assumption -- NO COVARIATES**
+```{r Function}
+#This function takes the multistate object (HCC.msm) and gives the output of estimates at step = 3 (3 month intervals) up to 60 (60 months)
+pmatrix_calculator <- function(input,steps=3,last=60){
+   timepoints <- c(seq(from=0, to=last, by=steps))
+  abc <- NULL
+  for(i in 1:(last/steps+1)){
+    abc <- cbind(abc,pmatrix.msm(input,t=timepoints[i]))
+  }
+return(abc)}
+```
+
+```{r Function with covariates (preop)}
+pmatrix_calculatorpreop <- function(input,gender,age,steps=3,last=60){
+  timepoints <- c(seq(from=0, to=last, by=steps))
+  abc <- NULL
+  for(i in 1:(last/steps+1)){
+    abc <- cbind(abc,pmatrix.msm(input, covariates = list(GenderMale1female0 = gender, Age = age), t=timepoints[i]))
+  }
+return(abc)}
+```
+
+```{r Function with covariates (postop)}
+pmatrix_calculatorpostop <- function(input,gender,age,solitary,satellite,microvascular,size, steps=3, last=60){
+  timepoints <- c(seq(from=0, to=last, by=steps))
+  abc <- NULL
+  for(i in 1:(last/steps+1)){
+    abc <- cbind(abc,pmatrix.msm(input, covariates = list(GenderMale1female0 = gender, Age = age, Path_number_solitary=solitary, Satellite_lesion_path=satellite, Microvascular_invasionnotabletobeassessedindeterminate9=microvascular, Path_size_5cm = size), t=timepoints[i]))
+  }
+return(abc)}
+
+#Dictionary
+#This is what would be specified by the user
+#Path_number_solitary: 1 = multiple tumour, 0 = solitary tumor
+#Age: continuous
+#Gender: "Male" = Male, "Female" = Female
+#Satellite_lesion_path: "Yes" = Yes, "No" = No
+#Microvascular_invasionnotabletobeassessedindeterminate9: 1=microvascular invasion, 0=no microvascular invasion
+#Path_size_5cm 0=less than 5 cm, 1=5 cm or greater
+```
+
+```{r Various examples, eval=FALSE}
+#Just examples at various time points (the function pmatrix_calculator already does this)
+pmatrix.msm(HCC.msm, t=0)
+pmatrix.msm(HCC.msm, t=3)
+pmatrix.msm(HCC.msm, t=6)
+pmatrix.msm(HCC.msm, t=9)
+pmatrix.msm(HCC.msm, t=12)
+pmatrix.msm(HCC.msm, t=15)
+pmatrix.msm(HCC.msm, t=18)
+pmatrix.msm(HCC.msm, t=21)
+pmatrix.msm(HCC.msm, t=24)
+pmatrix.msm(HCC.msm, t=27)
+pmatrix.msm(HCC.msm, t=30)
+pmatrix.msm(HCC.msm, t=33)
+pmatrix.msm(HCC.msm, t=36)
+pmatrix.msm(HCC.msm, t=39)
+pmatrix.msm(HCC.msm, t=42)
+pmatrix.msm(HCC.msm, t=45)
+pmatrix.msm(HCC.msm, t=48)
+pmatrix.msm(HCC.msm, t=51)
+pmatrix.msm(HCC.msm, t=54)
+pmatrix.msm(HCC.msm, t=57)
+pmatrix.msm(HCC.msm, t=60)
+```
+
+**Multistate model object under a time-homogeneous Markov assumption -- Preop model (only includes Age and Sex)**
+```{r Baseline, pre-op, post-op model}
+#Baseline
+pmatrix_calculator(HCC.msm)
+
+#Pre-op
+pmatrix_calculator(HCC.preop)
+
+#Post-op
+pmatrix_calculator(HCC.postop)
+```
+
+```{r}
+#This is an example of time interval 3 (3 months) for multistate model object HCC.postop, with covariates inputted (this is an example of what the user would input into the calculator)
+#I.e. I want estimates for a patient who had multiple tumors, was age 60, was a female, had satellite lesions, greater than 5 cm tumor, and microvascular invasion.
+pmatrix_calculatorpostop(HCC.postop, gender="Female", age=60, satellite = "Yes", solitary=1, microvascular=1, size=1, last=60)
+
+#This is what would be specified by the user
+#Path_number_solitary: 1 = multiple tumour, 0 = solitary tumor
+#Age: continuous
+#Gender: "Male" = Male, "Female" = Female
+#Satellite_lesion_path: "Yes" = Yes, "No" = No
+#Microvascular_invasionnotabletobeassessedindeterminate9: 1=microvascular invasion, 0=no microvascular invasion
+#Path_size_5cm 0=less than 5 cm, 1=5 cm or greater
+```
+
+**Plotting basic stacked area chart for first row (surgery) an example**
+```{r, fig.width=10, fig.height=10}
+#The probability variable here is me copy pasting the row of interest (for example surgery or first local recurrence) probabilities for each time point 
+series <- data.frame(
+  Months = as.numeric(rep(seq(0,60, by = 3), each = 8)),
+  Probability = c(1,0,0, 0, 0, 0, 0, 0, 0.9462385,             0.03321464, 0.001131608,          0.00004360176, 0.000002204259,       0.00000006792228, 0.013499378, 0.005870008, 0.8953673,             0.06181007, 0.004085709,           0.0003009666, 0.00003005736,         0.000001889078, 0.02611785, 0.01228617, 0.847231,             0.08627635,             0.008302085, 0.0008778051 ,           0.0001298341, 0.00001248158 ,        0.03795201, 0.01921844, 0.8016826,              0.1070566 ,0.0133360      ,      0.001800898, 0.0003505249,          0.00004581392, 0.04908591, 0.02664169, 0.7585829,              0.1245512, 0.01883773,            0.003048945, 0.0007318676 ,          0.0001219122, 0.05959072, 0.03453473, 0.7178003,              0.1391218, 0.02453544,             0.00457369, 0.001299351,           0.0002647976, 0.06952532, 0.04287930, 0.6792103,              0.1510948, 0.03022092,            0.006314081, 0.002063358,           0.0005001081, 0.07893732, 0.05165914, 0.6426949 ,             0.1607646, 0.03573774 ,           0.008205507, 0.003020589 ,          0.0008528839, 0.08786448, 0.06085927 ,0.6081427 ,             0.1683966, 0.04097141 ,            0.01018558, 0.004156574  ,          0.001345748, 0.09633613, 0.07046523, 0.575448,              0.1742299,              0.04584115, 0.01219751   ,          0.005448537, 0.001997571,         0.10437460, 0.08046266, 0.5445111,              0.1784797, 0.05029317    ,         0.01419187 ,0.006868182 ,           0.002822611, 0.11199655, 0.09083687, 0.5152373 ,             0.1813393, 0.05429507 ,            0.01612724, 0.008384164 ,           0.003830083, 0.11921424, 0.1015726, 0.4875374 ,             0.1829827, 0.05783127,             0.01797018, 0.009964152 ,            0.00502408, 0.12603653, 0.1126537, 0.4613266,              0.1835658, 0.06089921,             0.01969480, 0.01157645,            0.006403773, 0.13246988 ,0.1240635 ,0.436525 ,             0.1832286   ,           0.06350627, 0.02128202    ,          0.01319120, 0.007963805 ,        0.13851906, 0.1357841, 0.4130568    ,          0.1820964, 0.06566729,             0.02271877, 0.01478122,            0.009694823, 0.14418783, 0.1477969, 0.3908502,              0.1802812, 0.06740251,            0.023997151, 0.01632254,             0.01158409, 0.14947948, 0.1600828,
+   0.3698375,              0.1778834, 0.06873596,            0.025113598, 0.01779467,             0.01361612, 0.15439717, 0.1726216, 0.3499545,              0.1749922, 0.06969412,            0.026068113, 0.01918066,             0.01577332, 0.15894430, 0.1853928, 0.3311404,              0.1716872, 0.07030489,            0.026863566, 0.02046703,             0.01803659, 0.16312473, 0.1983756
+),
+State = rep(c("Surgery", "1st local recurrence", "2nd local recurrence", "3rd local recurrence", "4th local recurrence", "5th local recurrence", "Distant recurrence", "Death"), 21))
+
+series$State <- factor(series$State, levels = c("Surgery", "1st local recurrence", "2nd local recurrence", "3rd local recurrence", "4th local recurrence", "5th local recurrence", "Distant recurrence", "Death"))
+
+series1_interactive <- ggplot(series, aes(Months,Probability), cex.axis=3.0) + geom_area(aes(fill=State)) + scale_x_continuous(limits = c(0,60), expand = c(0,1)) + coord_cartesian(xlim = c(0,60), ylim = c(0,1), expand = F) + scale_fill_npg() + theme_bw() + theme( panel.grid=element_blank(), panel.border=element_blank(), text=element_text(size=14), legend.title = element_blank())
+ggplotly(series1_interactive)  %>%
+  layout(legend=list(font = list(size = 14), 
+                     title = list(text='<b>State</b> ', 
+                                  font = list(size = 16)))) %>% 
+  layout(xaxis=list(fixedrange=TRUE)) %>% 
+  layout(yaxis=list(fixedrange=TRUE))
+
+#Below are just various color schemes
+#Nature
+ggplot(series, aes(Months,Probability), cex.axis=3.0) + geom_area(aes(fill=State)) + scale_x_continuous(limits = c(0,60), expand = c(0,0)) + coord_cartesian(xlim = c(0,60), ylim = c(0,1), expand = F) + scale_fill_npg() + theme_bw() + theme(panel.grid=element_blank(), panel.border=element_blank(), text=element_text(size=14))
+
+#JCO
+ggplot(series, aes(Months,Probability), cex.axis=3.0) + geom_area(aes(fill=State)) + scale_x_continuous(limits = c(0,60), expand = c(0,0)) + coord_cartesian(xlim = c(0,60), ylim = c(0,1), expand = F) + scale_fill_jco() + theme_bw() + theme(panel.grid=element_blank(), panel.border=element_blank(), text=element_text(size=14))
+
+#lancet
+ggplot(series, aes(Months,Probability), cex.axis=3.0) + geom_area(aes(fill=State)) + scale_x_continuous(limits = c(0,60), expand = c(0,0)) + coord_cartesian(xlim = c(0,60), ylim = c(0,1), expand = F) + scale_fill_lancet() + theme_bw() + theme(panel.grid=element_blank(), panel.border=element_blank(), text=element_text(size=14))
+
+#UChicago
+ggplot(series, aes(Months,Probability), cex.axis=3.0) + geom_area(aes(fill=State)) + scale_x_continuous(limits = c(0,60), expand = c(0,0)) + coord_cartesian(xlim = c(0,60), ylim = c(0,1), expand = F) + scale_fill_uchicago() + theme_bw() + theme(panel.grid=element_blank(), panel.border=element_blank(), text=element_text(size=14))
+
+#NEJM
+ggplot(series, aes(Months,Probability), cex.axis=3.0) + geom_area(aes(fill=State)) + scale_x_continuous(limits = c(0,60), expand = c(0,0)) + coord_cartesian(xlim = c(0,60), ylim = c(0,1), expand = F) + scale_fill_nejm() + theme_bw() + theme(panel.grid=element_blank(), panel.border=element_blank(), text=element_text(size=14))
+
+#UCSGB
+ggplot(series, aes(Months,Probability), cex.axis=3.0) + geom_area(aes(fill=State)) + scale_x_continuous(limits = c(0,60), expand = c(0,0)) + coord_cartesian(xlim = c(0,60), ylim = c(0,1), expand = F) + scale_fill_ucscgb() + theme_bw() + theme(panel.grid=element_blank(), panel.border=element_blank(), text=element_text(size=14))
+
+#AAS
+ggplot(series, aes(Months,Probability), cex.axis=3.0) + geom_area(aes(fill=State)) + scale_x_continuous(limits = c(0,60), expand = c(0,0)) + coord_cartesian(xlim = c(0,60), ylim = c(0,1), expand = F) + scale_fill_aaas() + theme_bw() + theme(panel.grid=element_blank(), panel.border=element_blank(), text=element_text(size=14))
+
+#brewer
+ggplot(series, aes(Months,Probability), cex.axis=3.0) + geom_area(aes(fill=State)) + scale_x_continuous(limits = c(0,60), expand = c(0,0)) + coord_cartesian(xlim = c(0,60), ylim = c(0,1), expand = F) + scale_fill_brewer() + theme_bw() + theme(panel.grid=element_blank(), panel.border=element_blank(), text=element_text(size=14))
+
+#grey
+ggplot(series, aes(Months,Probability), cex.axis=3.0) + geom_area(aes(fill=State)) + scale_x_continuous(limits = c(0,60), expand = c(0,0)) + coord_cartesian(xlim = c(0,60), ylim = c(0,1), expand = F) + scale_fill_grey() + theme_bw() + theme(panel.grid=element_blank(), panel.border=element_blank(), text=element_text(size=14))
+
+#igv
+ggplot(series, aes(Months,Probability), cex.axis=3.0) + geom_area(aes(fill=State)) + scale_x_continuous(limits = c(0,60), expand = c(0,0)) + coord_cartesian(xlim = c(0,60), ylim = c(0,1), expand = F) + scale_fill_igv() + theme_bw() + theme(panel.grid=element_blank(), panel.border=element_blank(), text=element_text(size=14))
+```
+
+
