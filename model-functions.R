@@ -12,18 +12,14 @@ library(ggsci)
 library(plotly)
 library(scales)
 options(scipen = 999)
-# options(max.print = 20000)
-
 
 # Load model objects
-
 HCC.msm <- readRDS(file = "data/HCC.msm.rds")
 HCC.preop <- readRDS(file = "data/HCC.preop.rds")
 HCC.postop <- readRDS(file = "data/HCC.postop.rds")
 
 # This function is borrowed from: https://www.r-bloggers.com/2016/07/round-values-while-preserve-their-rounded-sum-in-r/
-# It rounds a list of numbers while preserving their overall sum, to a 
-# user-specified number of digits
+# The function preserves the overall sum and rounds the number to a specified number of digits
 
 round_preserve_sum <- function(x, digits = 0) {
   up <- 10 ^ digits
@@ -34,8 +30,7 @@ round_preserve_sum <- function(x, digits = 0) {
   y / up
 }
 
-# This function takes the multistate object (HCC.msm) and gives the 
-# output of estimates at step = 3 (3 month intervals) up to 60 (60 months)
+# Function: take multistate object (HCC.msm) and extract probability estimates at 3 month intervals up to 60 monts
 pmatrix_calculator <- function(input, steps=3, last=60){
   timepoints <- c(seq(from=0, to=last, by=steps))
   abc <- NULL
@@ -151,7 +146,7 @@ preparePlot <- function(input = "base", state = "Surgery",
   # print(myColours)
   # colScale <- scale_fill_manual(name = "grp", values = myColours)
 
-  if(!by_year) {
+  #if(!by_year) {
     seriesPlot <-
       ggplot(series, aes(Months, Probability),
              cex.axis = 3.0) +
@@ -168,29 +163,29 @@ preparePlot <- function(input = "base", state = "Surgery",
         legend.title = element_blank(),
         axis.title=element_text(size = 14, face = "bold")
       )
-  }
-  else if(by_year){
-    series <- dplyr::filter(series, (Months %% 12) == 0)
-    series$Years <- series$Months / 12
-    series$Probability <- round_preserve_sum(series$Probability, digits = 5)
-    seriesPlot <-
-      ggplot(series, aes(Years, Probability), 
-             cex.axis = 3.0) +
-             
-      geom_area(aes(fill = State)) +
-      scale_x_continuous(limits = c(0, 5), expand = c(0, 1)) +
-      scale_y_continuous(labels = scales::percent) +
-      coord_cartesian(xlim = c(0, 5), ylim = c(0, 1), expand = F) + 
-      theme_bw() + 
-      scale_fill_manual(values = myColours, drop = FALSE) + 
-      theme(
-        panel.grid = element_blank(),
-        panel.border = element_blank(),
-        text = element_text(size = 14),
-        legend.title = element_blank(),
-        axis.title=element_text(size = 14, face = "bold")
-      )
-  }
+ # }
+  #else if(by_year){
+  #  series <- dplyr::filter(series, (Months %% 12) == 0)
+  #  series$Years <- series$Months / 12
+  #  series$Probability <- round_preserve_sum(series$Probability, digits = 5)
+  #  seriesPlot <-
+  #    ggplot(series, aes(Years, Probability), 
+  #           cex.axis = 3.0) +
+  #           
+  #    geom_area(aes(fill = State)) +
+  #    scale_x_continuous(limits = c(0, 5), expand = c(0, 1)) +
+  #    scale_y_continuous(labels = scales::percent) +
+  #    coord_cartesian(xlim = c(0, 5), ylim = c(0, 1), expand = F) + 
+  #    theme_bw() + 
+  #    scale_fill_manual(values = myColours, drop = FALSE) + 
+  #    theme(
+  #      panel.grid = element_blank(),
+  #      panel.border = element_blank(),
+  #      text = element_text(size = 14),
+  #      legend.title = element_blank(),
+  #      axis.title=element_text(size = 14, face = "bold")
+  #    )
+  #}
   
   seriesPlotly <- ggplotly(seriesPlot) %>%
                     layout(legend = list(

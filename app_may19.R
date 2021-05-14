@@ -37,11 +37,11 @@ ui <- fluidPage(
         "Hepatocellular carcinoma recurrence multistate model",
         
         tabPanel(
-            title = "Calculator",
+            title = "Multistate model",
             
             sidebarPanel(
                 width = 4,
-                h4(strong("Variable Selection")),
+                h4(strong("Clinical variables")),
                 br(),
                 selectInput(
                     "modelType",
@@ -54,7 +54,7 @@ ui <- fluidPage(
 
                 numericInput("age", "Age", min = 18, value = 18),
                 radioButtons("sex", "Sex",
-                             c(Male = "Male", Female = "Female"),
+                             c(Female = "Female", Male = "Male"),
                              selected = "Female"),
                 
                 #postoperative model covariates
@@ -70,7 +70,8 @@ ui <- fluidPage(
                             '2nd Local Recurrence' = "Second local recurrence"
                         )
                     ),
-                    h5(strong("Pathology")),
+                    br(),
+                    h5(strong("Pathology specimen")),
                     checkboxInput("multipleTumours", "Multiple tumours"),
                     checkboxInput("largestTumour", "Largest tumour size  \u22655cm"),
                     checkboxInput("satellite", "Satellite lesions"),
@@ -86,25 +87,29 @@ ui <- fluidPage(
                 
                 # titlePanel(textOutput("titlePanel")),
                 mainPanel(
+                  helpText("Hover your mouse over the curves in the figure for monthly risk predictions 
+                              per disease state"),
+                                   plotlyOutput("probPlot", width = "800px", height = "600px")        
+                          ),
                     
-                    tabsetPanel(
+                #    tabsetPanel(
+                #        
+                #        tabPanel(title = "Monthly",
+                #                 br(),
+                #                 helpText("Hover your mouse over the curves in the figure for monthly risk predictions 
+                #              per disease state"),
+                #                 plotlyOutput("probPlot", width = "800px", height = "600px")        
+                #        ),
+                #        tabPanel(title = "Yearly",
+                #                 br(),
+                #                 helpText("Hover your mouse over the curves in the figure for yearly risk predictions 
+                #              per disease state"),
+                #                 plotlyOutput("probPlotYearly", width = "800px", height = "600px")
+                #        )
                         
-                        tabPanel(title = "Monthly",
-                                 br(),
-                                 helpText("Hover your mouse over the curves in the figure for monthly risk predictions 
-                              per disease state"),
-                                 plotlyOutput("probPlot", width = "800px", height = "600px")        
-                        ),
-                        tabPanel(title = "Yearly",
-                                 br(),
-                                 helpText("Hover your mouse over the curves in the figure for yearly risk predictions 
-                              per disease state"),
-                                 plotlyOutput("probPlotYearly", width = "800px", height = "600px")
-                        )
-                        
-                    ),
-                    br(),
-                )
+                   # )#,
+                    br()#,
+              #  )
             )
         ),
         
@@ -116,7 +121,7 @@ ui <- fluidPage(
             p(
                 "Multistate modeling of HCC recurrence can be used to account for the
         various disease states a patient can exist in and transition between after
-        curative-intent LR. In contrast to standard single time-to-event estimate,
+        curative-intent liver resection (LR). In contrast to standard single time-to-event estimate,
         multistate modeling provides more realistic prognostication of outcomes after
         curative intent surgery for HCC by taking into account a multitude of postoperative
         disease states and transitions between them. Our multistate modeling calculator can 
@@ -180,14 +185,14 @@ server <- function(input, output, session) {
         state = "Surgery",
         stateBaseline = "Surgery",
         sex = "Female",
-        age = 18,
+        age = 50,
         multipleTumours = 0,
         largestTumour = 0,
         satellite = "No",
         microvascular = 0,
         explanation = "The figure below represents the predicted 5-year probabilities
-    of making a transition to various disease states after curative
-    intent liver resection for a 18-year old female who has not yet undergone liver resection."
+    of making a transition to various postsurgical oncologic disease states after curative
+    intent liver resection for a 50-year old female who has not yet undergone liver resection."
     )
     
     output$plotExplanation <- renderText({
@@ -206,14 +211,14 @@ server <- function(input, output, session) {
    #                     state = values$stateBaseline)
      #   })
     #})
-    observe({
-        output$probPlotBaselineYearly <- renderPlotly({
-            
-            preparePlot(input = "base", 
-                        state = values$stateBaseline,
-                        by_year = TRUE)
-        })
-    })
+   # observe({
+   #     output$probPlotBaselineYearly <- renderPlotly({
+  #          
+  #          preparePlot(input = "base", 
+  #                      state = values$stateBaseline,
+  #                      by_year = TRUE)
+  #      })
+  #  })
     
     
     observeEvent(input$makePlot, {
@@ -233,9 +238,9 @@ server <- function(input, output, session) {
             values$satellite <- "No"
         }
         
-        # Prepare plot exmplanation phrase:
+        # Explanation of the clinical scenario
         sum <- paste(sep = " ", "The figure below represents the predicted 5-year probabilities of making", 
-                     "a transition to various disease states after curative intent liver resection for a",
+                     "a transition to various postsurgical oncologic disease states after curative intent liver resection for a",
                      values$age, "year old")
         
         if(values$model == "preop") {
@@ -268,7 +273,7 @@ server <- function(input, output, session) {
                 }
                 else if(!values$multipleTumours){
                     sum <- paste(sum, sep = " ", 
-                                 "one solitary tumour")
+                                 "a solitary tumour")
                     
                 }
                 
@@ -323,31 +328,31 @@ server <- function(input, output, session) {
         })
     })
     
-    observe({
-        output$probPlotYearly <- renderPlotly({
-            
-            if(values$model == "preop"){
-                preparePlot(input = values$model, 
-                            state = "Surgery", 
-                            sex = values$sex, 
-                            age = values$age,
-                            by_year = TRUE)
-            }
-            
-            else{
-                preparePlot(input = values$model, 
-                            state = values$state, 
-                            sex = values$sex, 
-                            age = values$age, 
-                            solitary = values$multipleTumours, 
-                            satellite = values$satellite, 
-                            microvascular = values$microvascular, 
-                            size = values$largestTumour,
-                            by_year = TRUE)
-            }
-            
-        })
-    })
+    #observe({
+    #    output$probPlotYearly <- renderPlotly({
+    #        
+    #        if(values$model == "preop"){
+    #            preparePlot(input = values$model, 
+    #                        state = "Surgery", 
+    #                        sex = values$sex, 
+    #                        age = values$age,
+    #                        by_year = TRUE)
+    #        }
+    #        
+    #        else{
+    #            preparePlot(input = values$model, 
+    #                        state = values$state, 
+    #                        sex = values$sex, 
+    #                        age = values$age, 
+    #                        solitary = values$multipleTumours, 
+    #                        satellite = values$satellite, 
+    #                        microvascular = values$microvascular, 
+    #                        size = values$largestTumour,
+    #                        by_year = TRUE)
+    #        }
+    #        
+    #    })
+    #})
     
     output$yearlyData <- renderDT({
         ggp <- NULL
@@ -371,15 +376,15 @@ server <- function(input, output, session) {
         }
         ggp_data <- plotly_data(ggp)
 
-        ggp_data$Probability <- percent(ggp_data$Probability, accuracy = 0.1, digits = 2, trim = TRUE)
-        ggp_data <- t(pivot_wider(ggp_data, names_from = State, values_from = Probability))
-        colnames(ggp_data) <- sprintf("Year %s", seq(1:5))
-        ggp_data <- ggp_data[2:nrow(ggp_data),]
-        
-        DT::datatable(ggp_data, 
-                      options = list(searching = FALSE, 
-                                     paging = FALSE, 
-                                     autoWidth = TRUE))
+       # ggp_data$Probability <- percent(ggp_data$Probability, accuracy = 0.1, digits = 2, trim = TRUE)
+      #  ggp_data <- t(pivot_wider(ggp_data, names_from = State, values_from = Probability))
+      #  colnames(ggp_data) <- sprintf("Year %s", seq(1:5))
+      #  ggp_data <- ggp_data[2:nrow(ggp_data),]
+      #  
+      #  DT::datatable(ggp_data, 
+       #               options = list(searching = FALSE, 
+      #                               paging = FALSE, 
+        #                             autoWidth = TRUE))
         
     }
     
