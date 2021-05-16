@@ -34,7 +34,7 @@ ui <- fluidPage(
          ")
     )),
     navbarPage(
-        "Hepatocellular carcinoma recurrence multistate model",
+        "Dynamic risk profiling of hepatocellular carcinoma recurrence after curative intent liver resection",
         
         tabPanel(
             title = "Multistate model",
@@ -66,8 +66,8 @@ ui <- fluidPage(
                         "Disease State",
                         c(
                             'No recurrence' = "Surgery",
-                            '1st Local Recurrence' = "First local recurrence",
-                            '2nd Local Recurrence' = "Second local recurrence"
+                            '1st intra-hepatic Recurrence' = "First local recurrence",
+                            '2nd intra-hepatic Recurrence' = "Second local recurrence"
                         )
                     ),
                     br(),
@@ -92,24 +92,8 @@ ui <- fluidPage(
                                    plotlyOutput("probPlot", width = "800px", height = "600px")        
                           ),
                     
-                #    tabsetPanel(
-                #        
-                #        tabPanel(title = "Monthly",
-                #                 br(),
-                #                 helpText("Hover your mouse over the curves in the figure for monthly risk predictions 
-                #              per disease state"),
-                #                 plotlyOutput("probPlot", width = "800px", height = "600px")        
-                #        ),
-                #        tabPanel(title = "Yearly",
-                #                 br(),
-                #                 helpText("Hover your mouse over the curves in the figure for yearly risk predictions 
-                #              per disease state"),
-                #                 plotlyOutput("probPlotYearly", width = "800px", height = "600px")
-                #        )
-                        
-                   # )#,
-                    br()#,
-              #  )
+                
+                    br()
             )
         ),
         
@@ -165,7 +149,7 @@ ui <- fluidPage(
             ),
             #TODO: Add link to abstract/poster
            h4("Manuscript"), 
-            HTML("<p><a href='https://easl.eu/wp-content/uploads/2021/01/Digital-Liver-Cancer-Summit-2021-Abstract-book.pdf'> Read an abstract of the project here </a></p>"),
+            HTML("<p><a href='https://easl.eu/wp-content/uploads/2021/01/Digital-Liver-Cancer-Summit-2021-Abstract-book.pdf#page=111'> Read an abstract of the project here </a></p>"),
             #br(),
            h4("Capstone project"), 
             HTML(
@@ -198,28 +182,6 @@ server <- function(input, output, session) {
     output$plotExplanation <- renderText({
         return(values$explanation)
     })
-    
-    #observeEvent(input$makePlotBaseline, {
-    #    values$stateBaseline <- input$stateBaseline
-    #    
-    #})
-    
-#    observe({
- #       output$probPlotBaseline <- renderPlotly({
- #           
-  #          preparePlot(input = "base", 
-   #                     state = values$stateBaseline)
-     #   })
-    #})
-   # observe({
-   #     output$probPlotBaselineYearly <- renderPlotly({
-  #          
-  #          preparePlot(input = "base", 
-  #                      state = values$stateBaseline,
-  #                      by_year = TRUE)
-  #      })
-  #  })
-    
     
     observeEvent(input$makePlot, {
         values$model <- input$modelType
@@ -327,69 +289,6 @@ server <- function(input, output, session) {
             
         })
     })
-    
-    #observe({
-    #    output$probPlotYearly <- renderPlotly({
-    #        
-    #        if(values$model == "preop"){
-    #            preparePlot(input = values$model, 
-    #                        state = "Surgery", 
-    #                        sex = values$sex, 
-    #                        age = values$age,
-    #                        by_year = TRUE)
-    #        }
-    #        
-    #        else{
-    #            preparePlot(input = values$model, 
-    #                        state = values$state, 
-    #                        sex = values$sex, 
-    #                        age = values$age, 
-    #                        solitary = values$multipleTumours, 
-    #                        satellite = values$satellite, 
-    #                        microvascular = values$microvascular, 
-    #                        size = values$largestTumour,
-    #                        by_year = TRUE)
-    #        }
-    #        
-    #    })
-    #})
-    
-    output$yearlyData <- renderDT({
-        ggp <- NULL
-        if(values$model == "preop"){
-            ggp <- preparePlot(input = values$model, 
-                               state = "Surgery", 
-                               sex = values$sex, 
-                               age = values$age,
-                               by_year = TRUE)
-        }
-        else{
-            ggp <- preparePlot(input = values$model, 
-                               state = values$state, 
-                               sex = values$sex, 
-                               age = values$age, 
-                               solitary = values$multipleTumours, 
-                               satellite = values$satellite, 
-                               microvascular = values$microvascular, 
-                               size = values$largestTumour,
-                               by_year = TRUE)
-        }
-        ggp_data <- plotly_data(ggp)
-
-       # ggp_data$Probability <- percent(ggp_data$Probability, accuracy = 0.1, digits = 2, trim = TRUE)
-      #  ggp_data <- t(pivot_wider(ggp_data, names_from = State, values_from = Probability))
-      #  colnames(ggp_data) <- sprintf("Year %s", seq(1:5))
-      #  ggp_data <- ggp_data[2:nrow(ggp_data),]
-      #  
-      #  DT::datatable(ggp_data, 
-       #               options = list(searching = FALSE, 
-      #                               paging = FALSE, 
-        #                             autoWidth = TRUE))
-        
-    }
-    
-    
-    )
     
 }
 
